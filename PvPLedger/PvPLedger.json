@@ -1,0 +1,15 @@
+{
+  "Author": "Roxyz0501",
+  "Name": "PvP Ledger",
+  "InternalName": "PvPLedger",
+  "AssemblyVersion": "1.0.0.0",
+  "RepoUrl": "https://github.com/Roxyz0501/PvPLedger",
+  "IconUrl": "https://raw.githubusercontent.com/Roxyz0501/PvPLedger/main/PvPLedger/images/icon.png",
+  "Punchline": "A quiet personal PvP overlay and match journal.",
+  "Description": "Public preview: observed live kills/deaths, personal kill feed, optional Frontline Battle High assist ranges, official final K/D/A, local history, CSV and optional Discord results. Native in-game integration is not yet verified. Open with /pvpledger. Seven UI languages.",
+  "ApplicableVersion": "any",
+  "DalamudApiLevel": 15,
+  "Tags": ["pvp", "overlay", "history", "csv"],
+  "LoadRequiredState": 0,
+  "CanUnloadAsync": false
+}

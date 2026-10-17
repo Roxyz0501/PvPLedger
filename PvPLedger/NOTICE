@@ -1,0 +1,16 @@
+PvP Ledger — Copyright (c) 2026 Roxyz0501. MIT License.
+
+NativeResults.cs uses result packet offsets and hook signatures documented by
+wrath16/PvpStats (PvP Tracker), MIT License, commit
+ba41904e9cdd2d3c4cb77800945a1a30c8f88715.
+https://github.com/wrath16/PvpStats
+The upstream license is preserved verbatim in PvpStats-LICENSE.txt, including
+its original placeholder copyright line. No upstream UI or persistence code
+is included. PvP Tracker is not required.
+
+Dalamud (goatcorp, AGPL-3.0) and FFXIVClientStructs (aers and contributors, MIT)
+are host-provided dependencies, not bundled. Lumina and Lumina.Excel are also
+provided by the host. Game log-message IDs are referenced from installed game
+data and xivapi/ffxiv-datamining; no game art or assets are redistributed.
+The seven-language font uses the host's Noto Sans CJK (SIL OFL 1.1); no font
+files are bundled. The geometric icon is original artwork by Roxyz0501.

@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0-windows</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><AllowUnsafeBlocks>true</AllowUnsafeBlocks></PropertyGroup>
+  <ItemGroup>
+    <Reference Include="$(appdata)/XIVLauncher/addon/Hooks/dev/*.dll" Exclude="$(appdata)/XIVLauncher/addon/Hooks/dev/cimgui.dll;$(appdata)/XIVLauncher/addon/Hooks/dev/cimguizmo.dll;$(appdata)/XIVLauncher/addon/Hooks/dev/cimplot.dll;$(appdata)/XIVLauncher/addon/Hooks/dev/nethost.dll;$(appdata)/XIVLauncher/addon/Hooks/dev/Dalamud.Boot.dll" />
+    <ProjectReference Include="../PvPLedger/PvPLedger.csproj" />
+    <None Include="$(appdata)/XIVLauncher/addon/Hooks/dev/cimgui.dll" Link="cimgui.dll" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

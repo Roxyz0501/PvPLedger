@@ -1,0 +1,23 @@
+<Project Sdk="Dalamud.NET.Sdk/15.0.0">
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable><ImplicitUsings>enable</ImplicitUsings>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks><PlatformTarget>x64</PlatformTarget>
+    <AssemblyName>PvPLedger</AssemblyName><Authors>Roxyz0501</Authors>
+    <Version>1.0.0.0</Version><PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RepoUrl>https://github.com/Roxyz0501/PvPLedger</RepoUrl>
+    <IconUrl>https://raw.githubusercontent.com/Roxyz0501/PvPLedger/main/PvPLedger/images/icon.png</IconUrl>
+    <Deterministic>true</Deterministic><RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <DebugType Condition="'$(Configuration)' == 'Release'">none</DebugType>
+    <DebugSymbols Condition="'$(Configuration)' == 'Release'">false</DebugSymbols>
+    <IsPackable>false</IsPackable><AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <DalamudLibPath>$(appdata)\XIVLauncher\addon\Hooks\dev\</DalamudLibPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Locales.json" />
+    <None Include="LICENSE" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="NOTICE" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="PvpStats-LICENSE.txt" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="images\icon.png" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>
