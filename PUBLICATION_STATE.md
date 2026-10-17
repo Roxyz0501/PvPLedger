@@ -13,5 +13,6 @@
 - Actual match events, result/gauge offsets, game rendering/DPI and live Discord delivery remain unverified. Public preview limitation is explicit in manifest, README and release notes. Native readers are restricted to game build `2026.10.06.0000.0000`.
 - Anonymous repository and PNG icon returned HTTP 200; public ZIP download matched the verified hash. Canonical tab source matched byte-for-byte. Attribution includes wrath16/PvpStats packet layouts, hook signatures and Battle High offset with original MIT license.
 - Source/index publication uses the connected GitHub integration; CLI used for unsupported repository creation and Release/asset operations. Existing shared-index entries preserved.
+- Final metadata commit: `08b5b7bd561b2c433aef96a7559f417644fbfb92`. Anonymous normal main URL and commit-pinned index now both return HTTP 200 with 11 entries and PvPLedger 1.0.0.0; all ten pre-existing entries preserved.
 
 - Shared index registration: `82a763d9cb392c87e4ddfa6001ace10e8296b771`. Connector and anonymous commit-pinned URL verified 11 entries; all ten existing entries unchanged. Normal main URL initially returned cached 10 entries.
