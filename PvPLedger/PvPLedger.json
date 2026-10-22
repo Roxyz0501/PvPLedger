@@ -2,7 +2,7 @@
   "Author": "Roxyz0501",
   "Name": "PvP Ledger",
   "InternalName": "PvPLedger",
-  "AssemblyVersion": "1.0.0.0",
+  "AssemblyVersion": "1.0.0.1",
   "RepoUrl": "https://github.com/Roxyz0501/PvPLedger",
   "IconUrl": "https://raw.githubusercontent.com/Roxyz0501/PvPLedger/main/PvPLedger/images/icon.png",
   "Punchline": "A quiet personal PvP overlay and match journal.",

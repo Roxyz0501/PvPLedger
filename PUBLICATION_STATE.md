@@ -16,3 +16,12 @@
 - Final metadata commit: `08b5b7bd561b2c433aef96a7559f417644fbfb92`. Anonymous normal main URL and commit-pinned index now both return HTTP 200 with 11 entries and PvPLedger 1.0.0.0; all ten pre-existing entries preserved.
 
 - Shared index registration: `82a763d9cb392c87e4ddfa6001ace10e8296b771`. Connector and anonymous commit-pinned URL verified 11 entries; all ten existing entries unchanged. Normal main URL initially returned cached 10 entries.
+
+
+## 2026-10-22 — 1.0.0.1 prepared
+
+- Persistence fixes prepared under the existing publication authorization. Release target: https://github.com/Roxyz0501/PvPLedger/releases/tag/v1.0.0.1
+- ZIP: `PvPLedger-1.0.0.1.zip`, 68,762 bytes; SHA-256 `9BC24025CEC395457E113F553A7B2A9AFA44C58FFF51D4337EC5F9B409AE59BB`.
+- Full suite: 6,247 checks; additional focused persistence run: 25 checks. Release build: zero warnings/errors. Both canonical tab sources match byte-for-byte.
+- Settings: changed-only 60-second schedule, exit/logout flush, three valid backups and corruption recovery. History remains per-match, with UTC date directories and legacy read compatibility. Existing retention limits unchanged. Common history-file tab and background-task cleanup added.
+- No production data migration or installed-DLL replacement. Actual in-game behavior and live Discord delivery remain unverified.

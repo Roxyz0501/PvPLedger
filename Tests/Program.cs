@@ -14,6 +14,7 @@ internal static class Program
     static async Task Main(string[] args)
     {
         var root = Path.GetFullPath(args[0]); Directory.CreateDirectory(root);
+        if (args.Contains("--persistence-only")) { PersistenceChecks.Run(Path.Combine(root, "persistence")); Console.WriteLine($"PASS: {Checks} persistence checks."); return; }
         var now = DateTimeOffset.UtcNow; var owner = HistoryStore.OwnerKey(123);
         var session = new MatchSession(now, Mode.Frontline, "Test arena", "Example Player", owner, 123, 376, false);
         Check(session.Add(now.AddSeconds(1), EventKind.Kill, "Enemy Player"), "First kill");
@@ -116,6 +117,7 @@ internal static class Program
         Check(JsonDocument.Parse(handler.Body).RootElement.GetProperty("allowed_mentions").GetProperty("parse").GetArrayLength() == 0, "No mentions");
         handler.Code = HttpStatusCode.TooManyRequests; Check(await webhook.Send(url,record.Summary,"en",true,default) == "RateLimited" && handler.Calls == 2, "Rate limit no retry");
         handler.Throw = true; Check(await webhook.Send(url,record.Summary,"en",false,default) == "SendUnknown" && handler.Calls == 3, "Unknown delivery no retry");
+        PersistenceChecks.Run(Path.Combine(root, "persistence"));
         UiChecks.Run(Path.Combine(root, "ui"));
         Console.WriteLine($"PASS: {Checks} core, storage, privacy, webhook, localization and UI checks.");
     }

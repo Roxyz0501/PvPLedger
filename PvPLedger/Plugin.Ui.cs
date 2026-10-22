@@ -22,6 +22,7 @@ public sealed partial class Plugin
             if (ImGui.BeginTabBar("MainTabs"))
             {
                 if (ImGui.BeginTabItem(T("History") + "###History")) { DrawHistory(); ImGui.EndTabItem(); }
+                DrawHistoryFiles();
                 StandardPluginTabs.DrawStandardTrailingTabs(T("Settings"), "Settings", DrawSettings,
                     T("Language"), DrawLanguage, T("Support"), () => StandardPluginTabs.DrawSupportContent(T("SupportHeading"), T("SupportBody"), T("Recipient"), T("SupportButton")));
                 ImGui.EndTabBar();
@@ -113,15 +114,17 @@ public sealed partial class Plugin
                 if (!Webhook.TryUrl(webhookDraft, out _)) status = "WebhookInvalid";
                 else
                 {
-                    try { config.ProtectedWebhook = SecretStore.Protect(webhookDraft.Trim()); webhookDraft = ""; SaveConfig(); status = "SecretSaved"; }
+                    try { config.ProtectedWebhook = SecretStore.Protect(webhookDraft.Trim()); webhookDraft = ""; ChangeConfig(); status = "SecretSaved"; }
                     catch { status = "SecretFailed"; }
                 }
             }
-            ImGui.SameLine(); if (ImGui.Button(T("ClearWebhook") + "###ClearWebhook")) { config.ProtectedWebhook = ""; webhookDraft = ""; config.DiscordEnabled = false; allowDiscord = false; SaveConfig(); }
+            ImGui.SameLine(); if (ImGui.Button(T("ClearWebhook") + "###ClearWebhook")) { config.ProtectedWebhook = ""; webhookDraft = ""; config.DiscordEnabled = false; allowDiscord = false; ChangeConfig(); }
             ImGui.TextWrapped(T(config.ProtectedWebhook.Length > 0 ? "WebhookConfigured" : "WebhookNotConfigured"));
             ImGui.Separator(); ImGui.TextWrapped(T(native.Status));
+            if (configurationStore.Stopped && ImGui.Button(T("RetrySave") + "###RetryConfig")) configurationStore.Retry();
             if (failed.Count > 0 && ImGui.Button(T("RetrySave") + "###RetrySave"))
             {
+                historyPaused = false; Interlocked.Exchange(ref saveFailures, 0);
                 for (int i = failed.Count - 1; i >= 0; i--) if (jobs.Writer.TryWrite(failed[i])) failed.RemoveAt(i);
             }
         }
@@ -130,6 +133,6 @@ public sealed partial class Plugin
     private void DrawLanguage()
     {
         var selected = StandardPluginTabs.DrawLanguageSelector(T("Language"), T("LanguageHelp"), config.Language!);
-        if (selected != null && selected != config.Language) { config.Language = selected; command.HelpMessage = T("CommandHelp"); SaveConfig(); }
+        if (selected != null && selected != config.Language) { config.Language = selected; command.HelpMessage = T("CommandHelp"); ChangeConfig(); }
     }
 }

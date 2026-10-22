@@ -14,6 +14,8 @@ internal static unsafe class UiChecks
         Directory.CreateDirectory(output); UiStub.Directory = Path.Combine(output, "config");
         ImGui.CreateContext(); var io = ImGui.GetIO(); io.DisplaySize = new(1440, 900); io.DeltaTime = 1f / 60;
         io.ConfigInputTrickleEventQueue = false;
+        ConfigurationStore? configStore = null;
+        HistoryStore? finalStore = null;
         using (var plugin = new Plugin(Stub<IDalamudPluginInterface>(), Stub<ICommandManager>(), Stub<IClientState>(), Stub<IPlayerState>(),
             Stub<IDutyState>(), Stub<IDataManager>(), Stub<IFramework>(), Stub<IChatGui>(), Stub<IGameInteropProvider>(), Stub<IPluginLog>()))
         {
@@ -78,7 +80,25 @@ internal static unsafe class UiChecks
             onResult.Invoke(plugin, [match.Id, new FinalResult(Mode.Frontline,300,7,2,16,MatchOutcome.First)]);
             Program.Check(type.GetField("current",BindingFlags.NonPublic|BindingFlags.Instance)!.GetValue(plugin) == null, "Finalized session cleared");
             Set("preview", false);
+            configStore = (ConfigurationStore)type.GetField("configurationStore", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(plugin)!;
+            finalStore = historyStore;
+            UiStub.Config.X = 411; Call("ChangeConfig");
+            type.GetMethod("OnLogout", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(plugin, [0, 0]);
+            Program.Check(configStore.Writes == 1 && historyStore.Writes == 2, "Real logout flushes changed settings and completed match");
+            type.GetMethod("OnLogout", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(plugin, [0, 0]);
+            Program.Check(configStore.Writes == 1 && historyStore.Writes == 2, "Duplicate logout performs zero writes");
+            UiStub.Config.X = 412; Call("ChangeConfig");
+            var interrupted = new MatchSession(now, Mode.Frontline, "Test Arena", "Example Player", owner,123,376,false);
+            Set("current", interrupted);
+            // Exercise the canonical tab within a real tab bar; no file scan in Draw.
+            ImGui.NewFrame(); ImGui.Begin("Files"); ImGui.BeginTabBar("FilesTabs");
+            Call("DrawHistoryFiles"); ImGui.EndTabBar(); ImGui.End(); ImGui.Render();
         }
+        Program.Check(configStore!.Writes == 2 && finalStore!.Writes == 4, "Dispose flushes changed config and interrupted match");
+        int finalWrites = finalStore!.Writes; long finalBytes = finalStore.WrittenBytes;
+        Task.Delay(150).GetAwaiter().GetResult();
+        Program.Check(finalStore.Writes == finalWrites && finalStore.WrittenBytes == finalBytes && configStore.Writes == 2, "No writes after Dispose returns");
+        Console.WriteLine($"Lifecycle measured: logout config=1/match=2 writes; duplicate logout=0; Dispose config=1/match=2; after shutdown=0. Match logical bytes={finalBytes}.");
         Program.Check(UiStub.Removes == 1, "Command unregisters on unload");
         ImGui.DestroyContext(); foreach (var pin in UiStub.Pins) pin.Free();
     }

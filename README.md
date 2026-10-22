@@ -2,7 +2,7 @@
 
 A small, quiet personal PvP overlay for FFXIV / Dalamud API 15, by **Roxyz0501**.
 
-**Public preview, 1.0.0.0.** Offline tests and native signature checks are available; actual match recording, Battle High memory reads, in-game overlays, and live Discord delivery have not yet been verified in a running match. Native result/Battle High integration is restricted to game build `2026.10.06.0000.0000`; other builds retain observed kill/death logging and disable native readers.
+**Public preview, 1.0.0.1.** Offline tests and native signature checks are available; actual match recording, Battle High memory reads, in-game overlays, and live Discord delivery have not yet been verified in a running match. Native result/Battle High integration is restricted to game build `2026.10.06.0000.0000`; other builds retain observed kill/death logging and disable native readers.
 
 ## できること
 
@@ -46,7 +46,10 @@ History stays in the Dalamud plugin configuration directory, separated by a hash
 - Frontline-only Battle High reads: one byte, at most 4 Hz during an active match. Inference only recalculates when the gauge or observed KO count changes.
 - History: 25 summaries per page, four cached pages, five-minute cache lifetime checked on requests; save/character changes invalidate the cache. Selected details read only one file and stay in memory. No disk I/O during drawing.
 - Per character: at most 1,000 matches, 365 days, or 128 MiB. The oldest data is pruned on a successful match save. Read sizes are capped at 4 KiB per summary and 1 MiB per match. CSV exports are user-controlled and are not automatically pruned.
-- Settings are saved only after changes, debounced by 500 ms. CSV export runs in the background.
+- Settings apply immediately and save only changed content on a 60-second schedule, with logout/unload flush. `configuration-v1.json` uses atomic replacement and three valid previous generations; corrupt primaries are preserved separately and a valid backup is restored. Existing host settings are read only as the initial fallback. Up to about 60 seconds of unsaved edits can be lost in a crash.
+- New matches use UTC start-date directories (`matches-v1/<character hash>/yyyy-MM-dd/`), including matches crossing midnight. Legacy flat files remain readable in place. A committed body missing its summary is repaired on startup without rewriting other matches. Exceptional pending files are replayed idempotently.
+- The independent History files tab shows cached metadata totals and trusted storage locations, including legacy files, recovery files and CSV exports. Settings are excluded. These are logical file sizes, not physical SSD use.
+- Three consecutive save failures suspend new match capture until explicit retry in Settings. The 16-entry queue and a single active match bound pending work. Failed snapshots receive a per-match exit journal attempt; unavailable storage can still prevent saving. CSV/detail/metadata tasks are tracked and joined on unload. CSV export runs in the background.
 
 Discord configuration accepts a standard `https://discord.com/api/webhooks/...` incoming webhook URL, without query parameters. The URL is masked and encrypted with Windows DPAPI for the current Windows account. Store it inside the plugin, not in issues or screenshots. Changing Windows accounts/machines may require entering it again.
 

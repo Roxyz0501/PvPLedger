@@ -21,6 +21,8 @@ public sealed partial class Plugin : IDalamudPlugin
     private readonly IChatGui chat;
     private readonly IPluginLog log;
     private readonly Configuration config;
+    private readonly ConfigurationStore configurationStore;
+    private readonly List<Task> background = [];
     private LocalizedFonts fonts;
     private readonly HistoryStore store;
     private readonly Webhook webhook = new();
@@ -36,8 +38,9 @@ public sealed partial class Plugin : IDalamudPlugin
     private readonly List<SaveJob> failed = [];
     private string owner = "", status = "", exportPath = "", webhookDraft = "";
     private bool open, preview, disposed;
-    private volatile bool allowDiscord;
-    private DateTimeOffset nextTick, endDue, saveConfigDue;
+    private volatile bool allowDiscord, historyPaused;
+    private int saveFailures;
+    private DateTimeOffset nextTick, endDue;
     private uint finishedTerritory;
     private int lastGauge = -1, lastKills = -1;
     private int historyRevision = -1, page, count, historyGeneration;
@@ -45,17 +48,19 @@ public sealed partial class Plugin : IDalamudPlugin
     private MatchRecord? detail;
     private bool loading, detailLoading, exporting;
     private int eventPage;
-    private sealed record SaveJob(string Owner, MatchRecord Record, bool Send, string Secret, string Language, bool Name);
+    private sealed record SaveJob(string Owner, MatchRecord Record, bool Send, string Secret, string Language, bool Name, TaskCompletionSource? Barrier = null);
 
     public Plugin(IDalamudPluginInterface pi, ICommandManager commands, IClientState client, IPlayerState player,
         IDutyState duty, IDataManager data, IFramework framework, IChatGui chat, IGameInteropProvider interop, IPluginLog log)
     {
         this.pi = pi; this.commands = commands; this.client = client; this.player = player; this.duty = duty;
         this.data = data; this.framework = framework; this.chat = chat; this.log = log;
-        config = pi.GetPluginConfig() as Configuration ?? new(); config.Sanitize();
+        configurationStore = new(Path.Combine(pi.GetPluginConfigDirectory(), "configuration-v1.json"));
+        config = configurationStore.Load(() => pi.GetPluginConfig() as Configuration ?? new());
+        if (configurationStore.Recovered) status = "ConfigRecovered";
         allowDiscord = config.DiscordEnabled;
         var language = Loc.Resolve(config.Language, client.ClientLanguage, pi.UiLanguage);
-        if (config.Language != language) { config.Language = language; pi.SavePluginConfig(config); }
+        if (config.Language != language) { config.Language = language; ChangeConfig(); }
         fonts = new(pi.UiBuilder.FontAtlas, []);
         store = new(Path.Combine(pi.GetPluginConfigDirectory(), "matches-v1"));
         native = new(interop, () => current, (id, result) => { if (resultQueue.Count < 16) resultQueue.Enqueue((id, result)); }, log);
@@ -69,7 +74,7 @@ public sealed partial class Plugin : IDalamudPlugin
         OnLogin();
     }
     private string T(string key) => Loc.Get(config.Language, key);
-    private void Open() { open = true; if (historyRevision != store.Revision) LoadHistory(); }
+    private void Open() { open = true; if (fileMeasurement == null) RefreshHistoryFiles(); if (historyRevision != store.Revision) LoadHistory(); }
     private void OnLogin()
     {
         if (!player.IsLoaded || player.ContentId == 0) return;
@@ -85,7 +90,7 @@ public sealed partial class Plugin : IDalamudPlugin
     private void OnLogout(int _, int __)
     {
         DrainResults();
-        Finish(true); owner = ""; history = []; detail = null; lastMatch = null; historyGeneration++;
+        Finish(true); FlushHistory(); SaveConfig(); owner = ""; history = []; detail = null; lastMatch = null; historyGeneration++;
         loading = detailLoading = false; historyRevision = -1; count = page = 0; finishedTerritory = 0;
     }
     private void OnTerritory(uint territory)
@@ -103,7 +108,7 @@ public sealed partial class Plugin : IDalamudPlugin
     }
     private void Start(bool partial)
     {
-        if (current != null || !client.IsPvPExcludingDen || !player.IsLoaded || player.ContentId == 0) return;
+        if (disposed || (historyPaused || Volatile.Read(ref saveFailures) >= 3) || current != null || !client.IsPvPExcludingDen || !player.IsLoaded || player.ContentId == 0) return;
         try
         {
             var cfc = duty.ContentFinderCondition.Value;
@@ -133,16 +138,22 @@ public sealed partial class Plugin : IDalamudPlugin
         var job = new SaveJob(current.Owner, record, config.DiscordEnabled && record.Summary.Official,
             config.ProtectedWebhook, config.Language!, config.DiscordIncludeName);
         finishedTerritory = current.Territory; current = null; lastMatch = record;
-        if (!jobs.Writer.TryWrite(job)) { failed.Add(job); status = "SaveFailed"; }
+        if (!jobs.Writer.TryWrite(job)) { historyPaused = true; failed.Add(job); status = "SaveFailed"; }
     }
     private async Task Worker()
     {
+        try { store.RecoverInterruptedSaves(); }
+        catch { completions.Enqueue(() => status = "ReadFailed"); }
         await foreach (var job in jobs.Reader.ReadAllAsync())
         {
+            if (job.Barrier != null) { job.Barrier.TrySetResult(); continue; }
+            if (historyPaused || Volatile.Read(ref saveFailures) >= 3)
+            { completions.Enqueue(() => { failed.Add(job with { Send = false }); status = "SaveFailed"; }); continue; }
             try
             {
                 store.Save(job.Owner, job.Record);
-                completions.Enqueue(() => { status = "Saved"; if (open && owner == job.Owner) LoadHistory(); });
+                Interlocked.Exchange(ref saveFailures, 0);
+                completions.Enqueue(() => { status = "Saved"; InvalidateHistoryFiles(); if (open && owner == job.Owner) LoadHistory(); });
                 if (!job.Send || !allowDiscord || cancellation.IsCancellationRequested) continue;
                 string url;
                 try { url = SecretStore.Unprotect(job.Secret); }
@@ -151,11 +162,12 @@ public sealed partial class Plugin : IDalamudPlugin
                 var result = await webhook.Send(url, job.Record.Summary, job.Language, job.Name, cancellation.Token).ConfigureAwait(false);
                 store.DeliveryResult(job.Owner, job.Record.Summary, result);
                 completions.Enqueue(() => status = result);
+                completions.Enqueue(InvalidateHistoryFiles);
             }
             catch
             {
                 completions.Enqueue(() => { failed.Add(job with { Send = false }); status = "SaveFailed"; });
-                log.Warning("PvP Ledger background save failed; snapshot retained for manual save retry.");
+                if (Interlocked.Increment(ref saveFailures) == 3) log.Warning("PvP Ledger save stopped after three failures; use Settings to retry. Pending matches retained.");
             }
         }
     }
@@ -164,7 +176,7 @@ public sealed partial class Plugin : IDalamudPlugin
         DrainResults();
         while (completions.TryDequeue(out var complete)) if (!disposed) complete();
         var now = DateTimeOffset.UtcNow;
-        if (saveConfigDue != default && now >= saveConfigDue) SaveConfig();
+        if (!configurationStore.Tick(config, now)) status = "ConfigFailed";
         if (now < nextTick) return; nextTick = now.AddMilliseconds(250);
         if (current is { Ended: not null } && now >= endDue) { Finish(false); return; }
         if (current == null)
@@ -192,17 +204,22 @@ public sealed partial class Plugin : IDalamudPlugin
         if (victim is { IsPlayer: true } && IsLocal(killer)) current.Add(DateTimeOffset.UtcNow, EventKind.Kill, victim.Name.ExtractText());
         else if (IsLocal(victim)) current.Add(DateTimeOffset.UtcNow, EventKind.Death, killer?.Name.ExtractText() ?? "");
     }
-    private void ChangeConfig() => saveConfigDue = DateTimeOffset.UtcNow.AddMilliseconds(500);
+    private void ChangeConfig() => configurationStore.Changed();
     private void SaveConfig()
     {
-        try { pi.SavePluginConfig(config); saveConfigDue = default; }
-        catch { status = "ConfigFailed"; saveConfigDue = default; }
+        if (!configurationStore.Flush(config)) status = "ConfigFailed";
+    }
+    private void RunBackground(System.Action action)
+    {
+        if (disposed) return;
+        background.RemoveAll(task => task.IsCompleted);
+        background.Add(Task.Run(action));
     }
     private void LoadHistory()
     {
-        if (owner.Length == 0 || loading) return;
+        if (disposed || owner.Length == 0 || loading) return;
         loading = true; var generation = historyGeneration; var requestedOwner = owner; var requestedPage = page;
-        _ = Task.Run(() =>
+        RunBackground(() =>
         {
             try
             {
@@ -222,7 +239,7 @@ public sealed partial class Plugin : IDalamudPlugin
     {
         if (detailLoading || owner.Length == 0) return;
         detailLoading = true; var generation = historyGeneration; var requestedOwner = owner;
-        _ = Task.Run(() =>
+        RunBackground(() =>
         {
             try { var result = store.Detail(requestedOwner, summary); completions.Enqueue(() => { if (generation == historyGeneration) { detail = result; eventPage = 0; detailLoading = false; } }); }
             catch { completions.Enqueue(() => { if (generation == historyGeneration) { status = "ReadFailed"; detailLoading = false; } }); }
@@ -232,11 +249,27 @@ public sealed partial class Plugin : IDalamudPlugin
     {
         if (exporting || owner.Length == 0 || (events && detail == null)) return;
         exporting = true; var requestedOwner = owner; var rows = history; var selected = events ? detail : null;
-        _ = Task.Run(() =>
+        RunBackground(() =>
         {
-            try { var path = store.Export(requestedOwner, rows, selected); completions.Enqueue(() => { exporting = false; exportPath = path; status = "Exported"; }); }
+            try { var path = store.Export(requestedOwner, rows, selected); completions.Enqueue(() => { exporting = false; InvalidateHistoryFiles(); exportPath = path; status = "Exported"; }); }
             catch { completions.Enqueue(() => { exporting = false; status = "ExportFailed"; }); }
         });
+    }
+    private void FlushHistory()
+    {
+        var barrier = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        jobs.Writer.WriteAsync(new("", null!, false, "", "", false, barrier)).AsTask().GetAwaiter().GetResult();
+        barrier.Task.GetAwaiter().GetResult();
+        while (completions.TryDequeue(out var complete)) complete();
+        PreserveFailed();
+    }
+    private void PreserveFailed()
+    {
+        foreach (var job in failed)
+        {
+            try { store.PreservePending(job.Owner, job.Record); }
+            catch { status = "SaveFailed"; log.Warning("PvP Ledger pending match could not be journaled; storage remains unavailable."); break; }
+        }
     }
     private void RefreshFonts(IEnumerable<string> extra)
     {
@@ -245,6 +278,7 @@ public sealed partial class Plugin : IDalamudPlugin
     }
     public void Dispose()
     {
+        if (disposed) return;
         pi.UiBuilder.Draw -= Draw; pi.UiBuilder.OpenMainUi -= Open; pi.UiBuilder.OpenConfigUi -= Open;
         framework.Update -= Update; chat.LogMessage -= OnLog; duty.DutyStarted -= OnStart;
         duty.DutyRecommenced -= OnRecommence; duty.DutyCompleted -= OnEnd;
@@ -253,10 +287,13 @@ public sealed partial class Plugin : IDalamudPlugin
         DrainResults();
         while (completions.TryDequeue(out var complete)) complete();
         Finish(true);
-        if (saveConfigDue != default) SaveConfig();
+        SaveConfig();
         disposed = true; commands.RemoveHandler("/pvpledger"); cancellation.Cancel(); jobs.Writer.TryComplete();
         // Disk-only queue drains on unload. Cancelling HTTP prevents the ten-second network timeout.
         worker.GetAwaiter().GetResult();
+        Task.WhenAll(background).GetAwaiter().GetResult();
+        while (completions.TryDequeue(out var complete)) complete();
+        PreserveFailed();
         webhook.Dispose(); cancellation.Dispose(); fonts.Dispose();
     }
 }
