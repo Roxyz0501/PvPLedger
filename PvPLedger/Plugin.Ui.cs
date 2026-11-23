@@ -7,6 +7,9 @@ namespace PvPLedger;
 
 public sealed partial class Plugin
 {
+    private static readonly PluginDependency[] Dependencies = [];
+    private readonly StandardPluginInfo pluginInfo = new(Dependencies);
+
     private void Draw()
     {
         if (!open && current == null && lastMatch == null) return;
@@ -24,7 +27,8 @@ public sealed partial class Plugin
                 if (ImGui.BeginTabItem(T("History") + "###History")) { DrawHistory(); ImGui.EndTabItem(); }
                 DrawHistoryFiles();
                 StandardPluginTabs.DrawStandardTrailingTabs(T("Settings"), "Settings", DrawSettings,
-                    T("Language"), DrawLanguage, T("Support"), () => StandardPluginTabs.DrawSupportContent(T("SupportHeading"), T("SupportBody"), T("Recipient"), T("SupportButton")));
+                    T("Language"), DrawLanguage, T("Support"), () => StandardPluginTabs.DrawSupportContent(T("SupportHeading"), T("SupportBody"), T("Recipient"), T("SupportButton")),
+                    StandardPluginInfo.Title(config.Language!), Dependencies.Length == 0 ? null : () => pluginInfo.Draw(pi, config.Language!));
                 ImGui.EndTabBar();
             }
         }

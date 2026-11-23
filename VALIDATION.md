@@ -74,3 +74,7 @@ Canonical StandardHistoryFilesTab.cs SHA-256: `5BD56A3F0CD79F58CD673282C353E4478
 Boundaries: one active match, 16 queued matches, at most one overflow snapshot before capture pauses; three failed writes pause capture and the remaining queue waits for manual retry. No ongoing retry timer. Logout waits for the serial queue (an in-flight HTTP request has its existing 10-second timeout); Dispose cancels HTTP then waits for disk work. A hung storage device can delay shutdown; tasks are not abandoned behind a timeout. Persisting a recovery journal also fails if storage is unavailable. Forced process termination cannot guarantee flushing an in-memory match or unsaved settings. Actual game callbacks, rendering, gauge reads and live Discord delivery remain unverified.
 
 Additional focused run after hardening malformed-version validation: 25 persistence checks passed, including invalid Version type plus corrupt newest backup, with fallback to the next valid generation.
+
+## 2026-11-23 common information integration
+
+External plugin dependencies: zero (no IPC subscribers or runtime plugin requirements). Both canonical sources copied byte-for-byte. Empty dependency array passes null drawInfo; no InstalledPlugins read or installer action is reachable. Existing tabs retained. Plugin Release build: zero warnings/errors. Live game behavior remains unverified.

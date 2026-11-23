@@ -2,7 +2,7 @@
 
 A small, quiet personal PvP overlay for FFXIV / Dalamud API 15, by **Roxyz0501**.
 
-**Public preview, 1.0.0.1.** Offline tests and native signature checks are available; actual match recording, Battle High memory reads, in-game overlays, and live Discord delivery have not yet been verified in a running match. Native result/Battle High integration is restricted to game build `2026.10.06.0000.0000`; other builds retain observed kill/death logging and disable native readers.
+**Public preview, 1.0.0.2.** Offline tests and native signature checks are available; actual match recording, Battle High memory reads, in-game overlays, and live Discord delivery have not yet been verified in a running match. Native result/Battle High integration is restricted to game build `2026.10.06.0000.0000`; other builds retain observed kill/death logging and disable native readers.
 
 ## できること
 
