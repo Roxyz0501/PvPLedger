@@ -28,3 +28,11 @@
 
 - Source/tag commit: `0df0cd34a68eaf6fd8949327079a795789dd3a8a`. Shared-index commit: `6f77cfb83cc8b5e74b2d548f2d7d14323ba12739`.
 - Anonymous repository, PNG icon and release ZIP returned HTTP 200. Downloaded ZIP matched the recorded SHA-256. Both normal main and commit-pinned indexes returned HTTP 200 with PvPLedger 1.0.0.1 and 13 entries; the other 12 entries were verified unchanged.
+
+## 2026-11-23 — 1.0.0.2 published
+
+- Common StandardPluginInfo and StandardPluginTabs copied byte-for-byte. External plugin dependencies: zero; null drawInfo hides the tab entirely. Existing tabs preserved.
+- Release: https://github.com/Roxyz0501/PvPLedger/releases/tag/v1.0.0.2
+- Source: 71acc0face77af88f7fa59715a91d6b27a581267. Index: 219c5703dd1d51b0363e5fb0967cc00c77bf41cd. Concurrent index changes preserved by refetching after conflicts.
+- ZIP SHA256: 83798293A8BB53A9B1C2FF944B3C26F222B738EDF11EA078549BC6D4E7EF4204. Anonymous repository, ZIP and pinned index returned HTTP 200; ZIP hash/version verified.
+- Plugin Release build: zero warnings/errors. 6,249 checks passed; test harness emitted MSB3246 from its SDK wildcard reference. Live game remains unverified.
